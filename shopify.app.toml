@@ -2,12 +2,11 @@
 
 client_id = "1646b3e45d0cec3a9ccb5b1c94379c95"
 name = "Premier-WishList"
-application_url = "https://aspersively-unresonating-kyong.ngrok-free.dev"
+application_url = "https://leandro-tinklier-camie.ngrok-free.dev"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-include_config_on_deploy = true
 
 [webhooks]
 api_version = "2026-04"
@@ -25,4 +24,4 @@ api_version = "2026-04"
 scopes = "write_products"
 
 [auth]
-redirect_urls = [ "https://aspersively-unresonating-kyong.ngrok-free.dev/api/auth" ]
+redirect_urls = [ "https://leandro-tinklier-camie.ngrok-free.dev/api/auth" ]

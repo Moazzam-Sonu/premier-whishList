@@ -1,0 +1,99 @@
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import prisma from "../db.server";
+import type {
+  MergeWishlistRequest,
+  WishlistItem,
+} from "../types/wishlist";
+import { corsResponse, handleCorsPreflight } from "../utils/cors.server";
+import { getOrCreateCustomerForShopifyId } from "../utils/wishlist.server";
+
+// Handle OPTIONS preflight requests
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const preflight = handleCorsPreflight(request);
+  if (preflight) return preflight;
+  return corsResponse({ message: "Method not allowed" }, request, { status: 405 });
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  try {
+    const body = (await request.json()) as MergeWishlistRequest;
+    const { customerId: shopifyCustomerId, guestItems } = body;
+    if (!shopifyCustomerId || !Array.isArray(guestItems)) {
+      return corsResponse(
+        { wishlist: [], error: "Missing customerId or guestItems" },
+        request,
+        { status: 400 },
+      );
+    }
+
+    // Map Shopify customer ID to our internal Customer + Shop
+    const { shop, customer } =
+      await getOrCreateCustomerForShopifyId(shopifyCustomerId);
+
+    // Find or create default wishlist for user
+    let wishlist = await prisma.wishlist.findFirst({
+      where: { customerId: customer.id, isDefault: true },
+      include: { items: true },
+    });
+    if (!wishlist) {
+      wishlist = await prisma.wishlist.create({
+        data: {
+          name: "Default Wishlist",
+          customerId: customer.id,
+          isDefault: true,
+          shopId: shop.id,
+          shareToken: crypto.randomUUID(),
+        },
+        include: { items: true },
+      });
+    }
+
+    // Gather productIds/variantIds already present
+    const existingItems = wishlist.items;
+    for (const guestItem of guestItems) {
+      const isDuplicate = existingItems.some(
+        (item: { productId: string; variantId: string | null }) =>
+          item.productId === guestItem.productId &&
+          (item.variantId || null) === (guestItem.variantId || null),
+      );
+      if (!isDuplicate) {
+        await prisma.wishlistItem.create({
+          data: {
+            wishlistId: wishlist.id,
+            productId: guestItem.productId,
+            variantId: guestItem.variantId,
+          },
+        });
+      }
+    }
+
+    // Refetch updated list
+    const updated = await prisma.wishlist.findUnique({
+      where: { id: wishlist.id },
+      include: { items: true },
+    });
+    const items: WishlistItem[] = (updated?.items ?? []).map(
+      (item: {
+        id: string;
+        productId: string;
+        variantId: string | null;
+        addedAt: Date;
+      }) => ({
+        id: item.id,
+        productId: item.productId,
+        variantId: item.variantId,
+        addedAt: item.addedAt.toISOString(),
+      }),
+    );
+
+    return corsResponse({ wishlist: items, example: items }, request);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return corsResponse(
+      { wishlist: [], error: errorMessage },
+      request,
+      { status: 500 },
+    );
+  }
+};
+

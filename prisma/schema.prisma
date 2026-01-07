@@ -32,3 +32,68 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+model Shop {
+  id          String      @id @default(uuid())
+  shopDomain  String      @unique
+  accessToken String
+  installedAt DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  customers   Customer[]
+  wishlists   Wishlist[]
+
+  @@index([shopDomain])
+}
+
+model Customer {
+  id               String     @id @default(uuid())
+  shopId           String
+  shopifyCustomerId String
+  email            String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  shop       Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  wishlists  Wishlist[]
+
+  @@index([shopId])
+  @@index([shopifyCustomerId])
+  @@index([email])
+  @@unique([shopId, shopifyCustomerId])
+}
+
+model Wishlist {
+  id          String    @id @default(uuid())
+  shopId      String
+  customerId String?
+  name        String
+  isDefault   Boolean   @default(false)
+  shareToken  String    @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  shop         Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer     Customer?      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items        WishlistItem[]
+
+  @@index([shopId])
+  @@index([customerId])
+  @@index([shareToken])
+}
+
+model WishlistItem {
+  id         String   @id @default(uuid())
+  wishlistId String
+  productId  String
+  variantId  String?
+  addedAt    DateTime @default(now())
+
+  wishlist   Wishlist  @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+
+  @@index([wishlistId])
+  @@index([productId])
+  @@index([variantId])
+  @@unique([wishlistId, productId, variantId])
+}
