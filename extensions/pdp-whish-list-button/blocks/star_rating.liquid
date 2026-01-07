@@ -85,13 +85,14 @@ document.addEventListener('alpine:init', () => {
             const found = (data.wishlist || []).find(
               (item) => item.productId === this.productId && item.variantId === this.variantId
             );
-            if (found) {
+            if (found) {   
               this.wishlisted = true;
               this.wishlistItemId = found.id;
             }
           })
           .catch(() => {});
       } else {
+        console.log("this is api url---22",this.apiBaseUrl);
         const guestWishlist = JSON.parse(localStorage.getItem('guestWishlist') || '[]');
         const found = guestWishlist.find(
           (item) => item.productId === this.productId && item.variantId === this.variantId
