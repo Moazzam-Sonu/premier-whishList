@@ -1,0 +1,140 @@
+{% style %}
+.wishlist-card-button-wrapper {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 50; /* higher than card images */
+}
+
+.wishlist-card-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid {{ block.settings.border_color }};
+  background: {{ block.settings.background_color }};
+  color: {{ block.settings.icon_color }};
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.wishlist-card-button svg {
+  fill: currentColor;
+}
+
+.wishlist-card-button.is-active {
+  color: {{ block.settings.active_icon_color }};
+  background: {{ block.settings.active_background_color }};
+  border-color: {{ block.settings.active_background_color }};
+}
+
+.wishlist-card-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+{% endstyle %}
+
+<script>
+(function () {
+  const customerId = {{ customer.id | json }};
+  const customerEmail = {{ customer.email | strip | json }};
+
+  const extractProductId = (card) => {
+    const link =
+      card.querySelector("a[id*='__product-grid-']") ||
+      card.querySelector("a[id*='CardLink-']");
+    if (!link || !link.id) return null;
+    const match = link.id.match(/product-grid-(\d+)/);
+    return match ? match[1] : null;
+  };
+
+  const attachButton = (card) => {
+    if (!card || card.querySelector("[data-wishlist-button]")) return;
+
+    const productId = extractProductId(card);
+    if (!productId) return;
+
+    // Create wrapper and button
+    const wrapper = document.createElement("div");
+    wrapper.className = "wishlist-card-button-wrapper";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "wishlist-card-button";
+    button.setAttribute("aria-label", "Add to wishlist");
+    button.setAttribute("aria-pressed", "false");
+    button.setAttribute("data-wishlist-button", "");
+    button.dataset.wishlistConfig = JSON.stringify({
+      customerId,
+      customerEmail,
+      productId,
+      variantId: null,
+    });
+
+    button.innerHTML =
+      '<svg width="{{ block.settings.icon_size }}px" height="{{ block.settings.icon_size }}px" viewBox="0 0 16 16" aria-hidden="true">' +
+      '<path d="M1.24264 8.24264L8 15L14.7574 8.24264C15.553 7.44699 16 6.36786 16 5.24264V5.05234C16 2.8143 14.1857 1 11.9477 1C10.7166 1 9.55233 1.55959 8.78331 2.52086L8 3.5L7.21669 2.52086C6.44767 1.55959 5.28338 1 4.05234 1C1.8143 1 0 2.8143 0 5.05234V5.24264C0 6.36786 0.44699 7.44699 1.24264 8.24264Z"/></svg>';
+
+    wrapper.appendChild(button);
+
+    // Attach to card media for visibility
+    const media = card.querySelector(".card__media");
+    if (media) {
+      if (getComputedStyle(media).position === "static") {
+        media.style.position = "relative";
+      }
+      media.appendChild(wrapper);
+    } else {
+      // fallback: attach inside card__inner
+      const inner = card.querySelector(".card__inner") || card;
+      if (getComputedStyle(inner).position === "static") {
+        inner.style.position = "relative";
+      }
+      inner.appendChild(wrapper);
+    }
+  };
+
+  const attachAll = () => {
+    document.querySelectorAll(".card-wrapper.product-card-wrapper")
+      .forEach((card) => attachButton(card));
+  };
+
+  // Attach on initial load
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", attachAll);
+  } else {
+    attachAll();
+  }
+
+  // Watch for new cards loaded dynamically (infinite scroll)
+  const observer = new MutationObserver(attachAll);
+  observer.observe(document.body, { childList: true, subtree: true });
+
+})();
+</script>
+
+{% render 'wishlist-loader' %}
+
+{% schema %}
+{
+  "name": "Wishlist Card Button",
+  "target": "section",
+  "settings": [
+    { "type": "color", "id": "icon_color", "label": "Icon Color", "default": "#111111" },
+    { "type": "color", "id": "active_icon_color", "label": "Active Icon Color", "default": "#ffffff" },
+    { "type": "color", "id": "background_color", "label": "Background Color", "default": "#ffffff" },
+    { "type": "color", "id": "active_background_color", "label": "Active Background Color", "default": "#111111" },
+    { "type": "color", "id": "border_color", "label": "Border Color", "default": "#111111" },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "label": "Icon Size",
+      "min": 12,
+      "max": 28,
+      "default": 16
+    }
+  ]
+}
+{% endschema %}

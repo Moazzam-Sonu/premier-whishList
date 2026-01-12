@@ -1,0 +1,13 @@
+<script>
+  window.PremierWishlistLoader = window.PremierWishlistLoader || {};
+  window.PremierWishlistApiBaseUrl =
+    window.PremierWishlistApiBaseUrl ||
+    "https://cork-acceptance-modern-thats.trycloudflare.com";
+  if (!window.PremierWishlistLoader.logic) {
+    window.PremierWishlistLoader.logic = true;
+    const wishlistScript = document.createElement("script");
+    wishlistScript.src = "{{ 'wishlist.js' | asset_url }}";
+    wishlistScript.async = false;
+    document.head.appendChild(wishlistScript);
+  }
+</script>

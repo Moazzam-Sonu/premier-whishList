@@ -44,14 +44,17 @@
 {% endstyle %}
 
 <div class="heart-btn-wrapper">
+  {% capture wishlist_config %}
+    {"customerId": {{ customer.id | json }}, "customerEmail": {{ customer.email | strip | json }}, "productId": {{ product.id | json }}, "variantId": {{ product.selected_or_first_available_variant.id | json }}}
+  {% endcapture %}
   <button type="button"
      class="heart-btn"
-     :class="wishlisted ? 'is-active' : ''"
-     x-data="wishlist"
-     @click="addToWishlist">
+     data-wishlist-config='{{ wishlist_config | strip_newlines | escape }}'
+     data-wishlist-button
+     aria-pressed="false">
 
-    <svg width="18" height="18" viewBox="0 0 24 24">
-      <path d="M12 21s-7.5-4.35-10-9c-2-3.7.5-8 4.5-8 2.2 0 3.5 1.4 3.5 1.4S11.3 4 13.5 4c4 0 6.5 4.3 4.5 8-2.5 4.65-10 9-10 9z"/>
+    <svg width="{{ block.settings.icon_size }}px" height="{{ block.settings.icon_size }}px" viewBox="0 0 16 16">
+      <path d="M1.24264 8.24264L8 15L14.7574 8.24264C15.553 7.44699 16 6.36786 16 5.24264V5.05234C16 2.8143 14.1857 1 11.9477 1C10.7166 1 9.55233 1.55959 8.78331 2.52086L8 3.5L7.21669 2.52086C6.44767 1.55959 5.28338 1 4.05234 1C1.8143 1 0 2.8143 0 5.05234V5.24264C0 6.36786 0.44699 7.44699 1.24264 8.24264Z"/>
     </svg>
 
     {{ block.settings.button_text }}
@@ -63,111 +66,7 @@
     </div>
   {% endif %}
 </div>
- <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
- <script>
-document.addEventListener('alpine:init', () => {
-  Alpine.data('wishlist', () => ({
-    wishlisted: false,
-    wishlistItemId: null,
-    customerId: '{{ customer.id | default: "" }}',
-    productId: '{{ product.id }}',
-    variantId: '{{ product.selected_or_first_available_variant.id }}',
-    // apiBaseUrl: (typeof window !== 'undefined' && window.API_BASE_URL) ? window.API_BASE_URL : window.location.origin,
-    apiBaseUrl: 'https://leandro-tinklier-camie.ngrok-free.dev',
-
-    init() {
-      // On load, hydrate state from API (logged-in) or localStorage (guest)
-      if (this.customerId) {
-        console.log("this is api url---11",this.apiBaseUrl);
-        fetch(`${this.apiBaseUrl}/api/wishlist?customerId=${encodeURIComponent(this.customerId)}`)
-          .then(res => res.json())
-          .then(data => {
-            const found = (data.wishlist || []).find(
-              (item) => item.productId === this.productId && item.variantId === this.variantId
-            );
-            if (found) {   
-              this.wishlisted = true;
-              this.wishlistItemId = found.id;
-            }
-          })
-          .catch(() => {});
-      } else {
-        console.log("this is api url---22",this.apiBaseUrl);
-        const guestWishlist = JSON.parse(localStorage.getItem('guestWishlist') || '[]');
-        const found = guestWishlist.find(
-          (item) => item.productId === this.productId && item.variantId === this.variantId
-        );
-        if (found) {
-          this.wishlisted = true;
-        }
-      }
-    },
-
-    addToWishlist() {
-      if (this.customerId) {
-        if (!this.wishlisted) {
-          console.log("this is api url---22",this.apiBaseUrl);
-          fetch(`${this.apiBaseUrl}/api/wishlist/add`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify({
-              customerId: this.customerId,
-              productId: this.productId,
-              variantId: this.variantId
-            })
-          })
-            .then(res => res.json())
-            .then(res => {
-              if (res.success) {
-                this.wishlisted = true;
-                this.wishlistItemId = res.wishlistItemId || null;
-              }
-            });
-        } else if (this.wishlistItemId) {
-          fetch(`${this.apiBaseUrl}/api/wishlist/remove`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              wishlistItemId: this.wishlistItemId
-            })
-          })
-            .then(res => res.json())
-            .then(res => {
-              if (res.success) {
-                this.wishlisted = false;
-                this.wishlistItemId = null;
-              }
-            });
-        }
-      } else {
-        let guestWishlist = JSON.parse(localStorage.getItem('guestWishlist') || '[]');
-        console.log("this is ",guestWishlist)
-        const index = guestWishlist.findIndex(
-          item => item.productId === this.productId && item.variantId === this.variantId
-        );
-
-        if (!this.wishlisted) {
-          if (index === -1) {
-            guestWishlist.push({ productId: this.productId, variantId: this.variantId });
-            localStorage.setItem('guestWishlist', JSON.stringify(guestWishlist));
-            this.wishlisted = true;
-          }
-        } else {
-          if (index !== -1) {
-            guestWishlist.splice(index, 1);
-            localStorage.setItem('guestWishlist', JSON.stringify(guestWishlist));
-            this.wishlisted = false;
-          }
-        }
-      }
-    }
-  }))
-});
-</script>
+{% render 'wishlist-loader' %}
 
 {% schema %}
 {
@@ -208,6 +107,14 @@ document.addEventListener('alpine:init', () => {
     { "type": "color", "id": "fill_bg_color", "label": "Fill Background", "default": "#000000" },
     { "type": "color", "id": "fill_text_color", "label": "Fill Text Color", "default": "#ffffff" },
     { "type": "color", "id": "fill_heart_color", "label": "Fill Heart Color", "default": "#ffffff" },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "label": "Icon Size",
+      "min": 12,
+      "max": 32,
+      "default": 18
+    },
 
     {
       "type": "range",

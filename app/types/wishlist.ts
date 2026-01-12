@@ -15,9 +15,10 @@ export type Wishlist = {
 };
 
 export type AddToWishlistRequest = {
-  productId: string;
-  variantId?: string;
-  customerId?: string;
+  productId: string | number;
+  variantId?: string | number;
+  customerId?: string | number;
+  email?: string;
 };
 
 export type AddToWishlistResponse = {
@@ -42,8 +43,8 @@ export type FetchWishlistResponse = {
 };
 
 export type MergeWishlistRequest = {
-  guestItems: Array<{ productId: string; variantId?: string }>;
-  customerId: string;
+  guestItems: Array<{ productId: string | number; variantId?: string | number }>;
+  customerId: string | number;
 };
 
 export type MergeWishlistResponse = {
@@ -51,4 +52,3 @@ export type MergeWishlistResponse = {
   example?: any;
   error?: string;
 };
-

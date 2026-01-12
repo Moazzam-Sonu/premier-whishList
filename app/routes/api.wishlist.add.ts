@@ -20,7 +20,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     const body = (await request.json()) as AddToWishlistRequest;
-    const { customerId: shopifyCustomerId, productId, variantId } = body;
+    const { customerId: shopifyCustomerId, productId, variantId, email } = body;
     if (!productId) {
       return corsResponse(
         { success: false, error: "Missing productId" },
@@ -28,12 +28,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         { status: 400 },
       );
     }
+    const normalizedProductId = String(productId);
+    const normalizedVariantId =
+      variantId === undefined || variantId === null
+        ? null
+        : String(variantId);
 
     let wishlist;
     if (shopifyCustomerId) {
       // Map Shopify customer ID to our internal Customer + Shop
       const { shop, customer } =
-        await getOrCreateCustomerForShopifyId(shopifyCustomerId);
+        await getOrCreateCustomerForShopifyId(shopifyCustomerId, email);
 
       // Find customer's default wishlist or create it
       wishlist = await prisma.wishlist.findFirst({
@@ -74,8 +79,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const existing = await prisma.wishlistItem.findFirst({
       where: {
         wishlistId: wishlist.id,
-        productId,
-        variantId: variantId || null,
+        productId: normalizedProductId,
+        variantId: normalizedVariantId,
       },
     });
     if (existing) {
@@ -89,15 +94,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const newItem = await prisma.wishlistItem.create({
       data: {
         wishlistId: wishlist.id,
-        productId,
-        variantId,
+        productId: normalizedProductId,
+        variantId: normalizedVariantId,
       },
     });
 
     // Example data for dev/front
     const example: WishlistItem = {
       id: newItem.id,
-      productId,
+      productId: normalizedProductId,
       variantId: newItem.variantId || undefined,
       addedAt: newItem.addedAt.toISOString(),
     };
@@ -116,4 +121,3 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
   }
 };
-

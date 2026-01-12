@@ -1,0 +1,124 @@
+{% style %}
+.premier-wishlist-header-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: {{ block.settings.text_color }};
+}
+
+.premier-wishlist-header-button svg {
+  fill: currentColor;
+}
+
+.wishlist-page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+.wishlist-page__title {
+  margin-bottom: 16px;
+  font-size: 28px;
+}
+
+.wishlist-page__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.wishlist-page__remove {
+  border: 1px solid #111;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.wishlist-page__state {
+  margin: 12px 0;
+}
+
+.wishlist-page__error {
+  color: #b00020;
+}
+{% endstyle %}
+
+{% capture wishlist_config %}
+  {"customerId": {{ customer.id | json }}}
+{% endcapture %}
+
+<script>
+  (function () {
+    if (window.PremierWishlistHeaderEmbed) return;
+    window.PremierWishlistHeaderEmbed = true;
+
+    function mountHeaderButton() {
+      const headerIcons =
+        document.querySelector(".header__icons") ||
+        document.querySelector("header .header__icons");
+      if (!headerIcons) return;
+      if (headerIcons.querySelector(".premier-wishlist-header-button")) return;
+
+      const button = document.createElement("a");
+      button.href = "/pages/premier-wishlist";
+      button.className =
+        "premier-wishlist-header-button header__icon link focus-inset";
+      button.innerHTML =
+        '<svg class="icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.24264 8.24264L8 15L14.7574 8.24264C15.553 7.44699 16 6.36786 16 5.24264V5.05234C16 2.8143 14.1857 1 11.9477 1C10.7166 1 9.55233 1.55959 8.78331 2.52086L8 3.5L7.21669 2.52086C6.44767 1.55959 5.28338 1 4.05234 1C1.8143 1 0 2.8143 0 5.05234V5.24264C0 6.36786 0.44699 7.44699 1.24264 8.24264Z" fill="currentColor"/></svg>' +
+        '<span class="visually-hidden">Wishlist</span>';
+      headerIcons.appendChild(button);
+    }
+
+    function mountWishlistPage() {
+      if (window.location.pathname !== "/pages/premier-wishlist") return;
+      if (document.querySelector("[data-wishlist-page]")) return;
+
+      const main =
+        document.querySelector("main") ||
+        document.querySelector("[role='main']") ||
+        document.querySelector(".main-page-container");
+      if (!main) return;
+
+      const container = document.createElement("div");
+      container.className = "wishlist-page";
+      container.setAttribute("data-wishlist-page", "");
+      container.setAttribute(
+        "data-wishlist-config",
+        "{{ wishlist_config | strip_newlines | escape }}",
+      );
+      container.innerHTML =
+        '<h1 class="wishlist-page__title">Your Wishlist</h1>' +
+        '<p class="wishlist-page__state" data-wishlist-loading style="display: none;">Loading wishlist...</p>' +
+        '<p class="wishlist-page__state wishlist-page__error" data-wishlist-error style="display: none;"></p>' +
+        '<p class="wishlist-page__state" data-wishlist-empty style="display: none;">Your wishlist is empty.</p>' +
+        '<div data-wishlist-list></div>';
+      main.appendChild(container);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", mountHeaderButton);
+      document.addEventListener("DOMContentLoaded", mountWishlistPage);
+    } else {
+      mountHeaderButton();
+      mountWishlistPage();
+    }
+  })();
+</script>
+
+{% render 'wishlist-loader' %}
+
+{% schema %}
+{
+  "name": "Header Wishlist Button",
+  "target": "body",
+  "settings": [
+    { "type": "color", "id": "text_color", "label": "Icon Color", "default": "#111111" }
+  ]
+}
+{% endschema %}

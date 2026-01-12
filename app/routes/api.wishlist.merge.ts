@@ -51,17 +51,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // Gather productIds/variantIds already present
     const existingItems = wishlist.items;
     for (const guestItem of guestItems) {
+      const normalizedProductId = String(guestItem.productId);
+      const normalizedVariantId =
+        guestItem.variantId === undefined || guestItem.variantId === null
+          ? null
+          : String(guestItem.variantId);
       const isDuplicate = existingItems.some(
         (item: { productId: string; variantId: string | null }) =>
-          item.productId === guestItem.productId &&
-          (item.variantId || null) === (guestItem.variantId || null),
+          item.productId === normalizedProductId &&
+          (item.variantId || null) === normalizedVariantId,
       );
       if (!isDuplicate) {
         await prisma.wishlistItem.create({
           data: {
             wishlistId: wishlist.id,
-            productId: guestItem.productId,
-            variantId: guestItem.variantId,
+            productId: normalizedProductId,
+            variantId: normalizedVariantId,
           },
         });
       }
@@ -96,4 +101,3 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
   }
 };
-

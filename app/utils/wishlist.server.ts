@@ -22,24 +22,28 @@ export async function getOrCreateDefaultShop() {
  * Treat the incoming customerId from the storefront as Shopify's customer ID
  * and map it to our internal Customer row.
  */
-export async function getOrCreateCustomerForShopifyId(shopifyCustomerId: string) {
+export async function getOrCreateCustomerForShopifyId(
+  shopifyCustomerId: string | number,
+  email?: string | null,
+) {
   const shop = await getOrCreateDefaultShop();
+  const normalizedShopifyCustomerId = String(shopifyCustomerId);
+  const normalizedEmail = email?.trim() ? email.trim() : undefined;
 
   const customer = await prisma.customer.upsert({
     where: {
       shopId_shopifyCustomerId: {
         shopId: shop.id,
-        shopifyCustomerId,
+        shopifyCustomerId: normalizedShopifyCustomerId,
       },
     },
     create: {
       shopId: shop.id,
-      shopifyCustomerId,
+      shopifyCustomerId: normalizedShopifyCustomerId,
+      email: normalizedEmail,
     },
-    update: {},
+    update: normalizedEmail ? { email: normalizedEmail } : {},
   });
 
   return { shop, customer };
 }
-
-
