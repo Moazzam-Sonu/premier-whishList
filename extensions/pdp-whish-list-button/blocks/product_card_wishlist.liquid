@@ -3,7 +3,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 50; /* higher than card images */
+  z-index: 2; /* higher than card images */
 }
 
 .wishlist-card-button {
@@ -50,11 +50,24 @@
     return match ? match[1] : null;
   };
 
+  const extractVariantId = (card) => {
+    const addButton =
+      card.querySelector("button[name='add']") ||
+      card.querySelector("form[action*='/cart/add'] [name='id']");
+    if (!addButton) return null;
+    const value =
+      addButton.value ||
+      addButton.getAttribute("value") ||
+      addButton.dataset?.variantId;
+    return value ? String(value) : null;
+  };
+
   const attachButton = (card) => {
     if (!card || card.querySelector("[data-wishlist-button]")) return;
 
     const productId = extractProductId(card);
     if (!productId) return;
+    const variantId = extractVariantId(card);
 
     // Create wrapper and button
     const wrapper = document.createElement("div");
@@ -70,7 +83,7 @@
       customerId,
       customerEmail,
       productId,
-      variantId: null,
+      variantId,
     });
 
     button.innerHTML =
@@ -80,20 +93,20 @@
     wrapper.appendChild(button);
 
     // Attach to card media for visibility
-    const media = card.querySelector(".card__media");
-    if (media) {
-      if (getComputedStyle(media).position === "static") {
-        media.style.position = "relative";
-      }
-      media.appendChild(wrapper);
-    } else {
+    // const media = card.querySelector(".card__media");
+    // if (media) {
+    //   if (getComputedStyle(media).position === "static") {
+    //     media.style.position = "relative";
+    //   }
+    //   media.appendChild(wrapper);
+    // } else {
       // fallback: attach inside card__inner
       const inner = card.querySelector(".card__inner") || card;
       if (getComputedStyle(inner).position === "static") {
         inner.style.position = "relative";
       }
       inner.appendChild(wrapper);
-    }
+    // }
   };
 
   const attachAll = () => {
