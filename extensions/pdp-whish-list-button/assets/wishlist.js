@@ -4,7 +4,7 @@
 
   const fallbackApiBaseUrl =
     window.PremierWishlistApiBaseUrl ||
-    "https://processor-thru-diet-copies.trycloudflare.com";
+    "https://par-accommodations-frozen-detailed.trycloudflare.com";
 
   const normalizeId = (value) =>
     value === null || value === undefined ? "" : String(value);
@@ -97,6 +97,9 @@
     const loadFromApi = async () => {
       setLoading(true);
       try {
+        if (!state.variantId) {
+          return;
+        }
         const items = await getWishlistForCustomer(
           state.customerId,
           state.apiBaseUrl,
@@ -118,6 +121,7 @@
     };
 
     const loadFromGuest = () => {
+      if (!state.variantId) return;
       const guestWishlist = JSON.parse(
         localStorage.getItem("guestWishlist") || "[]",
       );
@@ -132,6 +136,7 @@
     };
 
     const addLoggedIn = async () => {
+      if (!state.variantId) return;
       const response = await fetch(`${state.apiBaseUrl}/api/wishlist/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -158,6 +163,7 @@
     };
 
     const removeLoggedIn = async () => {
+      if (!state.variantId) return;
       const response = await fetch(`${state.apiBaseUrl}/api/wishlist/remove`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -172,6 +178,7 @@
     };
 
     const toggleGuest = () => {
+      if (!state.variantId) return;
       let guestWishlist = JSON.parse(
         localStorage.getItem("guestWishlist") || "[]",
       );

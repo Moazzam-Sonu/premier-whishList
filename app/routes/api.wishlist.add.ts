@@ -33,6 +33,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       variantId === undefined || variantId === null
         ? null
         : String(variantId);
+    if (!normalizedVariantId) {
+      return corsResponse(
+        { success: false, error: "Missing variantId" },
+        request,
+        { status: 400 },
+      );
+    }
 
     let wishlist;
     if (shopifyCustomerId) {

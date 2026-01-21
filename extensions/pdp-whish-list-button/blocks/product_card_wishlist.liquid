@@ -53,7 +53,8 @@
   const extractVariantId = (card) => {
     const addButton =
       card.querySelector("button[name='add']") ||
-      card.querySelector("form[action*='/cart/add'] [name='id']");
+      card.querySelector("form[action*='/cart/add'] [name='id']") ||
+      card.querySelector("input[name='id'][value]");
     if (!addButton) return null;
     const value =
       addButton.value ||
@@ -68,6 +69,7 @@
     const productId = extractProductId(card);
     if (!productId) return;
     const variantId = extractVariantId(card);
+    if (!variantId) return;
 
     // Create wrapper and button
     const wrapper = document.createElement("div");

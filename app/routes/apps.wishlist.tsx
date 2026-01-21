@@ -10,7 +10,7 @@ type WishlistRow = {
 };
 
 const FALLBACK_API_BASE_URL =
-  "https://casey-wed-saints-bbs.trycloudflare.com";
+  "https://par-accommodations-frozen-detailed.trycloudflare.com";
 
 const getApiBaseUrl = () => {
   if (typeof window !== "undefined") {

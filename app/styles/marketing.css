@@ -1,0 +1,127 @@
+.marketing-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.marketing-toolbar select {
+  border: 1px solid #d6d6d6;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.marketing-label {
+  font-size: 12px;
+  color: #4c4c4c;
+}
+
+.marketing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.marketing-card {
+  border: 1px solid #e6e6e6;
+  border-radius: 14px;
+  padding: 14px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.marketing-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.marketing-card__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #c6f2e8;
+  color: #1f1f1f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.marketing-card__email {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.marketing-card__sub {
+  font-size: 12px;
+  color: #6a6a6a;
+}
+
+.marketing-card__summary {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.marketing-card__price {
+  font-size: 13px;
+  color: #2b2b2b;
+}
+
+.marketing-card__thumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.marketing-card__thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f1f1f1;
+  border: 1px solid #ededed;
+}
+
+.marketing-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.marketing-card__more {
+  font-size: 12px;
+  color: #6a6a6a;
+}
+
+.marketing-card__btn {
+  border: 1px solid #d0d0d0;
+  background: #f9f9f9;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #8a8a8a;
+  cursor: not-allowed;
+}
+
+.marketing-pagination {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.marketing-pagination a {
+  text-decoration: none;
+  color: #111111;
+}
+
+.marketing-pagination a.disabled {
+  pointer-events: none;
+  color: #9a9a9a;
+}
