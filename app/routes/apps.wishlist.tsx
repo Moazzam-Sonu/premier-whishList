@@ -10,7 +10,7 @@ type WishlistRow = {
 };
 
 const FALLBACK_API_BASE_URL =
-  "https://par-accommodations-frozen-detailed.trycloudflare.com";
+  "https://apollo-tba-collectibles-wedding.trycloudflare.com";
 
 const getApiBaseUrl = () => {
   if (typeof window !== "undefined") {

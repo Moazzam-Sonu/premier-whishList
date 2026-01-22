@@ -45,7 +45,7 @@ export default function ReportingToolbar({
           <option value="count_desc">Wishlist count (High-Low)</option>
           <option value="count_asc">Wishlist count (Low-High)</option>
         </select>
-        <s-button className="reporting-export" variant="secondary" href={exportHref}>
+        <s-button  variant="secondary" href={exportHref}>
           Export CSV
         </s-button>
       </div>

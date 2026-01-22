@@ -68,6 +68,7 @@ model Wishlist {
   id          String    @id @default(uuid())
   shopId      String
   customerId String?
+  deviceId   String?
   name        String
   isDefault   Boolean   @default(false)
   shareToken  String    @unique
@@ -80,6 +81,8 @@ model Wishlist {
 
   @@index([shopId])
   @@index([customerId])
+  @@index([deviceId])
+  @@index([shopId, deviceId])
   @@index([shareToken])
 }
 

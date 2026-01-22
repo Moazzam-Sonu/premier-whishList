@@ -20,7 +20,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     const body = (await request.json()) as AddToWishlistRequest;
-    const { customerId: shopifyCustomerId, productId, variantId, email } = body;
+    const {
+      customerId: shopifyCustomerId,
+      productId,
+      variantId,
+      email,
+      deviceId,
+    } = body;
     if (!productId) {
       return corsResponse(
         { success: false, error: "Missing productId" },
@@ -36,6 +42,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (!normalizedVariantId) {
       return corsResponse(
         { success: false, error: "Missing variantId" },
+        request,
+        { status: 400 },
+      );
+    }
+
+    const normalizedDeviceId = deviceId?.trim() || null;
+    if (!shopifyCustomerId && !normalizedDeviceId) {
+      return corsResponse(
+        { success: false, error: "Missing deviceId for guest wishlist" },
         request,
         { status: 400 },
       );
@@ -71,15 +86,27 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     } else {
       // Guest wishlist: associate with default shop but no customer
       const shop = await getOrCreateDefaultShop();
-      wishlist = await prisma.wishlist.create({
-        data: {
-          name: "Guest Wishlist",
-          isDefault: true,
+      wishlist = await prisma.wishlist.findFirst({
+        where: {
           shopId: shop.id,
-          shareToken: crypto.randomUUID(),
+          customerId: null,
+          deviceId: normalizedDeviceId,
+          isDefault: true,
         },
         include: { items: true },
       });
+      if (!wishlist) {
+        wishlist = await prisma.wishlist.create({
+          data: {
+            name: "Guest Wishlist",
+            isDefault: true,
+            shopId: shop.id,
+            shareToken: crypto.randomUUID(),
+            deviceId: normalizedDeviceId,
+          },
+          include: { items: true },
+        });
+      }
     }
 
     // Prevent duplicates per wishlist

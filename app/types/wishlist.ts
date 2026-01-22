@@ -19,6 +19,7 @@ export type AddToWishlistRequest = {
   variantId?: string | number;
   customerId?: string | number;
   email?: string;
+  deviceId?: string;
 };
 
 export type AddToWishlistResponse = {
@@ -45,6 +46,7 @@ export type FetchWishlistResponse = {
 export type MergeWishlistRequest = {
   guestItems: Array<{ productId: string | number; variantId?: string | number }>;
   customerId: string | number;
+  deviceId?: string;
 };
 
 export type MergeWishlistResponse = {

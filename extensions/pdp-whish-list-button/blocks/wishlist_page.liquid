@@ -139,6 +139,36 @@
 .wishlist-page__error {
   color: #b00020;
 }
+
+.wishlist-page__notice {
+  grid-column: 1 / -1;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #ffffff;
+}
+
+.wishlist-page__notice-text {
+  font-size: 14px;
+  color: #222222;
+}
+
+.wishlist-page__notice-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #111111;
+  color: #111111;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+}
 {% endstyle %}
 
 {% capture wishlist_config %}

@@ -1,19 +1,9 @@
+import type { AdminApiContext } from "@shopify/shopify-app-react-router/server";
 import prisma from "../db.server";
-
-type ReportingRow = {
-  productId: string;
-  title: string;
-  sku: string | null;
-  inventory: number | null;
-  imageUrl: string | null;
-  users: string[];
-  count: number;
-};
+import type { ReportingRow } from "../types/reporting";
 
 type ReportingParams = {
-  admin: {
-    graphql: (query: string, options: { variables: unknown }) => Promise<Response>;
-  };
+  admin: AdminApiContext;
   shopDomain: string;
   query: string;
   sort: string;

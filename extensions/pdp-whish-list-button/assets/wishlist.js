@@ -4,10 +4,27 @@
 
   const fallbackApiBaseUrl =
     window.PremierWishlistApiBaseUrl ||
-    "https://par-accommodations-frozen-detailed.trycloudflare.com";
+    "https://apollo-tba-collectibles-wedding.trycloudflare.com";
 
   const normalizeId = (value) =>
     value === null || value === undefined ? "" : String(value);
+  const deviceStorageKey = "premierWishlistDeviceId";
+  const getDeviceId = () => {
+    try {
+      let id = localStorage.getItem(deviceStorageKey);
+      if (!id) {
+        if (typeof crypto !== "undefined" && crypto.randomUUID) {
+          id = crypto.randomUUID();
+        } else {
+          id = `device_${Math.random().toString(36).slice(2, 10)}_${Date.now()}`;
+        }
+        localStorage.setItem(deviceStorageKey, id);
+      }
+      return id;
+    } catch {
+      return "";
+    }
+  };
 
   const cache =
     window.PremierWishlistCache ||
@@ -81,6 +98,7 @@
       productId: normalizeId(config.productId),
       variantId: normalizeId(config.variantId),
       apiBaseUrl: normalizeId(config.apiBaseUrl) || fallbackApiBaseUrl,
+      deviceId: getDeviceId(),
     };
 
     const setLoading = (value) => {
@@ -145,6 +163,7 @@
           email: state.customerEmail,
           productId: state.productId,
           variantId: state.variantId || null,
+          deviceId: state.deviceId || undefined,
         }),
       });
       const result = await response.json();
@@ -177,9 +196,34 @@
       }
     };
 
-    const toggleGuest = () => {
+    const addGuest = async () => {
       if (!state.variantId) return;
-      let guestWishlist = JSON.parse(
+      const response = await fetch(`${state.apiBaseUrl}/api/wishlist/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: state.productId,
+          variantId: state.variantId || null,
+          deviceId: state.deviceId || undefined,
+        }),
+      });
+      const result = await response.json();
+      if (!result.success) return;
+      const guestWishlist = JSON.parse(
+        localStorage.getItem("guestWishlist") || "[]",
+      );
+      guestWishlist.push({
+        id: result.wishlistItemId || null,
+        productId: state.productId,
+        variantId: state.variantId || null,
+      });
+      localStorage.setItem("guestWishlist", JSON.stringify(guestWishlist));
+      setActive(true);
+    };
+
+    const removeGuest = async () => {
+      if (!state.variantId) return;
+      const guestWishlist = JSON.parse(
         localStorage.getItem("guestWishlist") || "[]",
       );
       const index = guestWishlist.findIndex(
@@ -187,26 +231,69 @@
           normalizeId(item.productId) === state.productId &&
           normalizeId(item.variantId) === state.variantId,
       );
+      if (index === -1) return;
+      const item = guestWishlist[index];
+      if (item?.id) {
+        await fetch(`${state.apiBaseUrl}/api/wishlist/remove`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wishlistItemId: item.id }),
+        });
+      }
+      guestWishlist.splice(index, 1);
+      localStorage.setItem("guestWishlist", JSON.stringify(guestWishlist));
+      setActive(false);
+    };
 
+    const toggleGuest = async () => {
+      if (!state.variantId) return;
       if (!state.wishlisted) {
-        if (index === -1) {
-          guestWishlist.push({
-            productId: state.productId,
-            variantId: state.variantId || null,
-          });
-          localStorage.setItem("guestWishlist", JSON.stringify(guestWishlist));
-          setActive(true);
-        }
-      } else if (index !== -1) {
-        guestWishlist.splice(index, 1);
-        localStorage.setItem("guestWishlist", JSON.stringify(guestWishlist));
-        setActive(false);
+        await addGuest();
+      } else {
+        await removeGuest();
       }
     };
 
     const hydrate = () => {
       if (state.customerId) {
-        loadFromApi();
+        const mergeGuest = async () => {
+          const mergeKey = `${state.customerId}:${state.deviceId || ""}`;
+          const merged =
+            window.PremierWishlistGuestMerged ||
+            (window.PremierWishlistGuestMerged = {});
+          if (merged[mergeKey]) return;
+          merged[mergeKey] = true;
+          const guestItems = JSON.parse(
+            localStorage.getItem("guestWishlist") || "[]",
+          );
+          if (!guestItems.length && !state.deviceId) {
+            return;
+          }
+          try {
+            const response = await fetch(
+              `${state.apiBaseUrl}/api/wishlist/merge`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  customerId: state.customerId,
+                  guestItems,
+                  deviceId: state.deviceId || undefined,
+                }),
+              },
+            );
+            const result = await response.json();
+            if (result?.wishlist) {
+              localStorage.removeItem("guestWishlist");
+              cache.wishlistByCustomer[state.customerId] = {
+                data: result.wishlist || [],
+              };
+            }
+          } catch {
+            // no-op
+          }
+        };
+        mergeGuest().finally(() => loadFromApi());
       } else {
         loadFromGuest();
       }
@@ -229,7 +316,7 @@
           setLoading(false);
         }
       } else {
-        toggleGuest();
+        await toggleGuest();
       }
     });
 
@@ -251,12 +338,14 @@
       customerId: normalizeId(config.customerId),
       shop: normalizeId(config.shop),
       apiBaseUrl: normalizeId(config.apiBaseUrl) || fallbackApiBaseUrl,
+      deviceId: getDeviceId(),
     };
 
     const listEl = container.querySelector("[data-wishlist-list]");
     const emptyEl = container.querySelector("[data-wishlist-empty]");
     const loadingEl = container.querySelector("[data-wishlist-loading]");
     const errorEl = container.querySelector("[data-wishlist-error]");
+    const titleEl = container.querySelector(".wishlist-page__title");
 
     const setLoading = (value) => {
       if (loadingEl) loadingEl.style.display = value ? "" : "none";
@@ -272,12 +361,34 @@
       errorEl.style.display = message ? "" : "none";
     };
 
+    const toggleGuestNotice = (isGuest) => {
+      if (!container) return;
+      const existing = container.querySelector(".wishlist-page__notice");
+      if (!isGuest) {
+        if (existing) existing.remove();
+        return;
+      }
+      if (existing) return;
+      const notice = document.createElement("div");
+      notice.className = "wishlist-page__notice";
+      notice.innerHTML =
+        '<div class="wishlist-page__notice-text">Don\'t lose your list! Login to save your favorites and access them whenever.</div>' +
+        '<a class="wishlist-page__notice-link" href="/login">Login</a>';
+      if (titleEl && titleEl.parentNode) {
+        titleEl.parentNode.insertBefore(notice, titleEl);
+      } else {
+        container.insertBefore(notice, container.firstChild);
+      }
+    };
+
     const getGuestItems = () => {
       const guestWishlist = JSON.parse(
         localStorage.getItem("guestWishlist") || "[]",
       );
       return guestWishlist.map((item) => ({
-        id: `${normalizeId(item.productId)}:${normalizeId(item.variantId)}`,
+        id:
+          normalizeId(item.id) ||
+          `${normalizeId(item.productId)}:${normalizeId(item.variantId)}`,
         productId: normalizeId(item.productId),
         variantId: normalizeId(item.variantId),
       }));
@@ -310,6 +421,20 @@
             const guestWishlist = JSON.parse(
               localStorage.getItem("guestWishlist") || "[]",
             );
+            const entry = guestWishlist.find(
+              (entryItem) =>
+                normalizeId(entryItem.productId) ===
+                  normalizeId(item.productId) &&
+                normalizeId(entryItem.variantId) ===
+                  normalizeId(item.variantId),
+            );
+            if (entry?.id) {
+              await fetch(`${state.apiBaseUrl}/api/wishlist/remove`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ wishlistItemId: entry.id }),
+              });
+            }
             const next = guestWishlist.filter(
               (entry) =>
                 normalizeId(entry.productId) !== normalizeId(item.productId) ||
@@ -485,6 +610,42 @@
         }
       };
       if (state.customerId) {
+        toggleGuestNotice(false);
+        const mergeKey = `${state.customerId}:${state.deviceId || ""}`;
+        const merged =
+          window.PremierWishlistGuestMerged ||
+          (window.PremierWishlistGuestMerged = {});
+        if (!merged[mergeKey]) {
+          merged[mergeKey] = true;
+          const guestItems = JSON.parse(
+            localStorage.getItem("guestWishlist") || "[]",
+          );
+          if (guestItems.length || state.deviceId) {
+            try {
+              const response = await fetch(
+                `${state.apiBaseUrl}/api/wishlist/merge`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    customerId: state.customerId,
+                    guestItems,
+                    deviceId: state.deviceId || undefined,
+                  }),
+                },
+              );
+              const result = await response.json();
+              if (result?.wishlist) {
+                localStorage.removeItem("guestWishlist");
+                cache.wishlistByCustomer[state.customerId] = {
+                  data: result.wishlist || [],
+                };
+              }
+            } catch {
+              // no-op
+            }
+          }
+        }
         try {
           const items = await getWishlistForCustomer(
             state.customerId,
@@ -504,6 +665,7 @@
         return;
       }
 
+      toggleGuestNotice(true);
       const items = getGuestItems();
       renderItems(items);
       await hydrateProductCards(items);
