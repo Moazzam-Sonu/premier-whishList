@@ -4,7 +4,7 @@
 
   const fallbackApiBaseUrl =
     window.PremierWishlistApiBaseUrl ||
-    "https://apollo-tba-collectibles-wedding.trycloudflare.com";
+    "https://waiver-congress-steady-electro.trycloudflare.com";
 
   const normalizeId = (value) =>
     value === null || value === undefined ? "" : String(value);

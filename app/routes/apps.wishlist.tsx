@@ -10,7 +10,7 @@ type WishlistRow = {
 };
 
 const FALLBACK_API_BASE_URL =
-  "https://apollo-tba-collectibles-wedding.trycloudflare.com";
+  "https://waiver-congress-steady-electro.trycloudflare.com";
 
 const getApiBaseUrl = () => {
   if (typeof window !== "undefined") {
