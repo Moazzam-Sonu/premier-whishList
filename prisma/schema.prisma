@@ -37,6 +37,7 @@ model Shop {
   id          String      @id @default(uuid())
   shopDomain  String      @unique
   accessToken String
+  klaviyoPrivateKey String?
   installedAt DateTime    @default(now())
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -68,7 +69,6 @@ model Wishlist {
   id          String    @id @default(uuid())
   shopId      String
   customerId String?
-  deviceId   String?
   name        String
   isDefault   Boolean   @default(false)
   shareToken  String    @unique
@@ -81,8 +81,6 @@ model Wishlist {
 
   @@index([shopId])
   @@index([customerId])
-  @@index([deviceId])
-  @@index([shopId, deviceId])
   @@index([shareToken])
 }
 

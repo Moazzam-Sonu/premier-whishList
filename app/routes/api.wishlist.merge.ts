@@ -17,11 +17,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     const body = (await request.json()) as MergeWishlistRequest;
-    const { customerId: shopifyCustomerId, guestItems, deviceId } = body;
-    const normalizedDeviceId = deviceId?.trim() || null;
-    if (!shopifyCustomerId) {
+    const { customerId: shopifyCustomerId, guestItems } = body;
+    if (!shopifyCustomerId || !Array.isArray(guestItems)) {
       return corsResponse(
-        { wishlist: [], error: "Missing customerId" },
+        { wishlist: [], error: "Missing customerId or guestItems" },
         request,
         { status: 400 },
       );
@@ -49,32 +48,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
     }
 
-    const safeGuestItems = Array.isArray(guestItems) ? guestItems : [];
-    const deviceWishlist = normalizedDeviceId
-      ? await prisma.wishlist.findFirst({
-          where: {
-            shopId: shop.id,
-            customerId: null,
-            deviceId: normalizedDeviceId,
-            isDefault: true,
-          },
-          include: { items: true },
-        })
-      : null;
-
-    const combinedItems = [
-      ...safeGuestItems.map((item) => ({
-        productId: String(item.productId),
-        variantId:
-          item.variantId === undefined || item.variantId === null
-            ? null
-            : String(item.variantId),
-      })),
-      ...(deviceWishlist?.items || []).map((item) => ({
-        productId: item.productId,
-        variantId: item.variantId || null,
-      })),
-    ];
+    const combinedItems = guestItems.map((item) => ({
+      productId: String(item.productId),
+      variantId:
+        item.variantId === undefined || item.variantId === null
+          ? null
+          : String(item.variantId),
+    }));
 
     // Gather productIds/variantIds already present
     const existingItems = wishlist.items;
@@ -98,10 +78,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           },
         });
       }
-    }
-
-    if (deviceWishlist) {
-      await prisma.wishlist.delete({ where: { id: deviceWishlist.id } });
     }
 
     // Refetch updated list

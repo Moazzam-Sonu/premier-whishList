@@ -31,12 +31,30 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: relative;
 }
 
 .marketing-card__header {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.marketing-card__select input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #111111;
+}
+
+.marketing-card__select--top {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.marketing-card.is-selected {
+  border-color: #111111;
+  box-shadow: 0 0 0 1px #111111 inset;
 }
 
 .marketing-card__avatar {
@@ -100,11 +118,24 @@
 }
 
 .marketing-card__btn {
-  border: 1px solid #d0d0d0;
-  background: #f9f9f9;
+  border: 1px solid #111111;
+  background: #111111;
   border-radius: 10px;
   padding: 8px 12px;
   font-size: 13px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.marketing-card__btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.marketing-card__btn:disabled {
+  border-color: #d0d0d0;
+  background: #f1f1f1;
   color: #8a8a8a;
   cursor: not-allowed;
 }
@@ -124,4 +155,34 @@
 .marketing-pagination a.disabled {
   pointer-events: none;
   color: #9a9a9a;
+}
+
+.marketing-bulk {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0 12px;
+  flex-wrap: wrap;
+}
+
+.marketing-bulk__count {
+  font-size: 12px;
+  color: #4c4c4c;
+}
+
+.marketing-bulk__btn {
+  border: 1px solid #111111;
+  background: #111111;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.marketing-bulk__btn:disabled {
+  border-color: #d0d0d0;
+  background: #f1f1f1;
+  color: #8a8a8a;
+  cursor: not-allowed;
 }

@@ -2,17 +2,38 @@ import type { MarketingRow } from "../../types/marketing";
 
 type MarketingGridProps = {
   rows: MarketingRow[];
+  onSend?: (row: MarketingRow) => void;
+  sendingEmail?: string | null;
+  selectedEmails?: Set<string>;
+  onToggleSelect?: (email: string) => void;
 };
 
-export default function MarketingGrid({ rows }: MarketingGridProps) {
+export default function MarketingGrid({
+  rows,
+  onSend,
+  sendingEmail,
+  selectedEmails,
+  onToggleSelect,
+}: MarketingGridProps) {
   return (
     <div className="marketing-grid">
       {rows.map((row) => {
         const visible = row.products.slice(0, 4);
         const remaining = Math.max(0, row.products.length - visible.length);
+        const isSelected = selectedEmails?.has(row.email) || false;
         return (
-          <div className="marketing-card" key={row.email}>
+          <div
+            className={`marketing-card${isSelected ? " is-selected" : ""}`}
+            key={row.email}
+          >
             <div className="marketing-card__header">
+              <label className="marketing-card__select marketing-card__select--top">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onToggleSelect?.(row.email)}
+                />
+              </label>
               <div className="marketing-card__avatar">
                 {row.email.charAt(0).toUpperCase()}
               </div>
@@ -42,8 +63,13 @@ export default function MarketingGrid({ rows }: MarketingGridProps) {
                 <div className="marketing-card__more">+{remaining}</div>
               )}
             </div>
-            <button type="button" className="marketing-card__btn" disabled>
-              Send mail
+            <button
+              type="button"
+              className="marketing-card__btn"
+              onClick={() => onSend?.(row)}
+              disabled={!onSend || sendingEmail === row.email}
+            >
+              {sendingEmail === row.email ? "Sending..." : "Send mail"}
             </button>
           </div>
         );

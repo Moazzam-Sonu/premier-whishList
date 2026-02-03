@@ -18,6 +18,23 @@ export async function getOrCreateDefaultShop() {
   return shop;
 }
 
+export async function getOrCreateShopByDomain(shopDomain?: string | null) {
+  const normalized = shopDomain?.trim();
+  if (!normalized) return getOrCreateDefaultShop();
+
+  const existing = await prisma.shop.findUnique({
+    where: { shopDomain: normalized },
+  });
+  if (existing) return existing;
+
+  return prisma.shop.create({
+    data: {
+      shopDomain: normalized,
+      accessToken: "dev-access-token",
+    },
+  });
+}
+
 /**
  * Treat the incoming customerId from the storefront as Shopify's customer ID
  * and map it to our internal Customer row.
@@ -25,8 +42,9 @@ export async function getOrCreateDefaultShop() {
 export async function getOrCreateCustomerForShopifyId(
   shopifyCustomerId: string | number,
   email?: string | null,
+  shopDomain?: string | null,
 ) {
-  const shop = await getOrCreateDefaultShop();
+  const shop = await getOrCreateShopByDomain(shopDomain);
   const normalizedShopifyCustomerId = String(shopifyCustomerId);
   const normalizedEmail = email?.trim() ? email.trim() : undefined;
 

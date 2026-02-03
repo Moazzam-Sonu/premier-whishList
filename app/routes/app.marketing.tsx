@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useNavigate, useSearchParams } from "react-router";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
 import "../styles/marketing.css";
@@ -159,6 +161,10 @@ export default function Marketing() {
   const { rows, page, totalPages, sort } = useLoaderData<LoaderData>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const shopify = useAppBridge();
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const makeHref = (nextPage: number) => {
     const params = new URLSearchParams(searchParams);
     params.set("page", String(nextPage));
@@ -169,6 +175,9 @@ export default function Marketing() {
   return (
     <s-page heading="Marketing">
       <s-section padding="base">
+        {sendError && (
+          <s-paragraph style={{ color: "#b00020" }}>{sendError}</s-paragraph>
+        )}
         <SortToolbar
           sort={sort}
           onChange={(value) => {
@@ -179,7 +188,121 @@ export default function Marketing() {
           }}
         />
 
-        <MarketingGrid rows={rows} />
+        <div className="marketing-bulk">
+          <label className="marketing-card__select">
+            <input
+              type="checkbox"
+              checked={selectedEmails.size === rows.length && rows.length > 0}
+              onChange={(event) => {
+                if (event.target.checked) {
+                  setSelectedEmails(new Set(rows.map((row) => row.email)));
+                } else {
+                  setSelectedEmails(new Set());
+                }
+              }}
+            />
+          </label>
+          <span className="marketing-bulk__count">
+            {selectedEmails.size} selected
+          </span>
+          <button
+            type="button"
+            className="marketing-bulk__btn"
+            disabled={selectedEmails.size === 0 || !!sendingEmail}
+            onClick={async () => {
+              setSendError(null);
+              const selectedRows = rows.filter((row) =>
+                selectedEmails.has(row.email),
+              );
+              if (!selectedRows.length) return;
+              setSendingEmail("bulk");
+              let successCount = 0;
+              let failCount = 0;
+              for (const row of selectedRows) {
+                try {
+                  const response = await fetch("/api/marketing/send", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      email: row.email,
+                      totalItems: row.totalItems,
+                      totalPrice: row.totalPrice,
+                      products: row.products.map((product) => ({
+                        id: product.id,
+                        title: product.title,
+                        imageUrl: product.imageUrl,
+                        handle: product.handle,
+                        price: product.price,
+                      })),
+                    }),
+                  });
+                  const result = await response.json();
+                  if (!result.success) throw new Error(result.error);
+                  successCount += 1;
+                } catch {
+                  failCount += 1;
+                }
+              }
+              if (successCount) {
+                shopify.toast.show(`Emails sent: ${successCount}`);
+              }
+              if (failCount) {
+                shopify.toast.show(`Failed: ${failCount}`, { isError: true });
+              }
+              setSendingEmail(null);
+            }}
+          >
+            Send mail to selected
+          </button>
+        </div>
+
+        <MarketingGrid
+          rows={rows}
+          sendingEmail={sendingEmail}
+          selectedEmails={selectedEmails}
+          onToggleSelect={(email) => {
+            setSelectedEmails((prev) => {
+              const next = new Set(prev);
+              if (next.has(email)) next.delete(email);
+              else next.add(email);
+              return next;
+            });
+          }}
+          onSend={async (row) => {
+            setSendError(null);
+            setSendingEmail(row.email);
+            try {
+              const response = await fetch("/api/marketing/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: row.email,
+                  totalItems: row.totalItems,
+                  totalPrice: row.totalPrice,
+                  products: row.products.map((product) => ({
+                    id: product.id,
+                    title: product.title,
+                    imageUrl: product.imageUrl,
+                    handle: product.handle,
+                    price: product.price,
+                  })),
+                }),
+              });
+              const result = await response.json();
+              if (!result.success) {
+                throw new Error(result.error || "Failed to send email");
+              }
+              shopify.toast.show("Email sent to Klaviyo flow");
+            } catch (error) {
+              const message =
+                error instanceof Error ? error.message : "Failed to send email";
+              setSendError(message);
+              shopify.toast.show(message, { isError: true });
+            } finally {
+              setSendingEmail(null);
+            }
+          }}
+        />
 
         <Pagination page={page} totalPages={totalPages} makeHref={makeHref} />
       </s-section>

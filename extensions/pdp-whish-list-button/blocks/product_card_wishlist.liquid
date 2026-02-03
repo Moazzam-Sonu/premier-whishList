@@ -40,6 +40,9 @@
 (function () {
   const customerId = {{ customer.id | json }};
   const customerEmail = {{ customer.email | strip | json }};
+  const loginUrl =
+    "https://shopify.com/77283033320/account?locale=en&region_country=US";
+  const shopDomain = {{ shop.permanent_domain | json }};
 
   const extractProductId = (card) => {
     const link =
@@ -86,6 +89,8 @@
       customerEmail,
       productId,
       variantId,
+      loginUrl,
+      shop: shopDomain,
     });
 
     button.innerHTML =

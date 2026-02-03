@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { redirect, useSearchParams } from "react-router";
 
@@ -10,7 +10,7 @@ type WishlistRow = {
 };
 
 const FALLBACK_API_BASE_URL =
-  "https://waiver-congress-steady-electro.trycloudflare.com";
+  "https://oops-plymouth-distribute-apr.trycloudflare.com";
 
 const getApiBaseUrl = () => {
   if (typeof window !== "undefined") {
@@ -26,8 +26,6 @@ export default function WishlistPage() {
   const [items, setItems] = useState<WishlistRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const isGuest = useMemo(() => !customerId, [customerId]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -57,18 +55,9 @@ export default function WishlistPage() {
         return;
       }
 
-      const guestWishlist = JSON.parse(
-        localStorage.getItem("guestWishlist") || "[]",
-      );
-      const guestItems: WishlistRow[] = guestWishlist.map(
-        (item: { productId: string; variantId?: string }) => ({
-          id: `${item.productId}:${item.variantId || ""}`,
-          productId: item.productId,
-          variantId: item.variantId || null,
-        }),
-      );
       if (!isCancelled) {
-        setItems(guestItems);
+        setItems([]);
+        setError("Please login first.");
         setLoading(false);
       }
     };
@@ -83,23 +72,8 @@ export default function WishlistPage() {
   const removeItem = async (item: WishlistRow) => {
     if (!item) return;
 
-    if (isGuest) {
-      const guestWishlist = JSON.parse(
-        localStorage.getItem("guestWishlist") || "[]",
-      );
-      const next = guestWishlist.filter(
-        (entry: { productId: string; variantId?: string }) =>
-          entry.productId !== item.productId ||
-          (entry.variantId || null) !== (item.variantId || null),
-      );
-      localStorage.setItem("guestWishlist", JSON.stringify(next));
-      setItems((prev) =>
-        prev.filter(
-          (entry) =>
-            entry.productId !== item.productId ||
-            (entry.variantId || null) !== (item.variantId || null),
-        ),
-      );
+    if (!customerId) {
+      setError("Please login first.");
       return;
     }
 

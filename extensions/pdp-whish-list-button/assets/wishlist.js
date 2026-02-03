@@ -4,27 +4,10 @@
 
   const fallbackApiBaseUrl =
     window.PremierWishlistApiBaseUrl ||
-    "https://waiver-congress-steady-electro.trycloudflare.com";
+    "https://oops-plymouth-distribute-apr.trycloudflare.com";
 
   const normalizeId = (value) =>
     value === null || value === undefined ? "" : String(value);
-  const deviceStorageKey = "premierWishlistDeviceId";
-  const getDeviceId = () => {
-    try {
-      let id = localStorage.getItem(deviceStorageKey);
-      if (!id) {
-        if (typeof crypto !== "undefined" && crypto.randomUUID) {
-          id = crypto.randomUUID();
-        } else {
-          id = `device_${Math.random().toString(36).slice(2, 10)}_${Date.now()}`;
-        }
-        localStorage.setItem(deviceStorageKey, id);
-      }
-      return id;
-    } catch {
-      return "";
-    }
-  };
 
   const cache =
     window.PremierWishlistCache ||
@@ -33,7 +16,48 @@
     window.PremierWishlistProductCache ||
     (window.PremierWishlistProductCache = {});
 
-  const getWishlistForCustomer = (customerId, apiBaseUrl) => {
+  const ensureLoginModalStyles = () => {
+    if (document.querySelector("[data-premier-wishlist-modal-style]")) return;
+    const style = document.createElement("style");
+    style.setAttribute("data-premier-wishlist-modal-style", "");
+    style.textContent =
+      ".wishlist-login-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999}" +
+      ".wishlist-login-modal__overlay{position:absolute;inset:0;background:rgba(0,0,0,0.45)}" +
+      ".wishlist-login-modal__card{position:relative;background:#fff;border-radius:14px;padding:18px 20px;min-width:280px;max-width:90vw;box-shadow:0 10px 30px rgba(0,0,0,0.2)}" +
+      ".wishlist-login-modal__title{font-size:16px;font-weight:600;margin-bottom:6px;color:#111}" +
+      ".wishlist-login-modal__text{font-size:14px;color:#444;margin-bottom:14px}" +
+      ".wishlist-login-modal__actions{display:flex;gap:10px;justify-content:flex-end}" +
+      ".wishlist-login-modal__btn{border-radius:999px;border:1px solid #111;background:#111;color:#fff;padding:8px 14px;font-size:13px;text-decoration:none}" +
+      ".wishlist-login-modal__close{border:1px solid #ddd;background:#fff;color:#111;padding:8px 14px;border-radius:999px;font-size:13px;cursor:pointer}";
+    document.head.appendChild(style);
+  };
+
+  const showLoginModal = (loginUrl) => {
+    ensureLoginModalStyles();
+    const existing = document.querySelector("[data-wishlist-login-modal]");
+    if (existing) return;
+    const modal = document.createElement("div");
+    modal.className = "wishlist-login-modal";
+    modal.setAttribute("data-wishlist-login-modal", "");
+    modal.innerHTML =
+      '<div class="wishlist-login-modal__overlay" data-wishlist-login-close></div>' +
+      '<div class="wishlist-login-modal__card">' +
+      '<div class="wishlist-login-modal__title">Please login first</div>' +
+      '<div class="wishlist-login-modal__text">Login to save your favorites.</div>' +
+      '<div class="wishlist-login-modal__actions">' +
+      '<button type="button" class="wishlist-login-modal__close" data-wishlist-login-close>Cancel</button>' +
+      '<a class="wishlist-login-modal__btn" href="' +
+      loginUrl +
+      '">Login</a>' +
+      "</div>" +
+      "</div>";
+    modal
+      .querySelectorAll("[data-wishlist-login-close]")
+      .forEach((node) => node.addEventListener("click", () => modal.remove()));
+    document.body.appendChild(modal);
+  };
+
+  const getWishlistForCustomer = (customerId, apiBaseUrl, shopDomain) => {
     const key = normalizeId(customerId);
     if (!key) return Promise.resolve([]);
     if (cache.wishlistByCustomer[key]?.data) {
@@ -42,9 +66,10 @@
     if (cache.wishlistByCustomer[key]?.promise) {
       return cache.wishlistByCustomer[key].promise;
     }
-    const promise = fetch(
-      `${apiBaseUrl}/api/wishlist?customerId=${encodeURIComponent(key)}`,
-    )
+    const params = new URLSearchParams();
+    params.set("customerId", key);
+    if (shopDomain) params.set("shop", shopDomain);
+    const promise = fetch(`${apiBaseUrl}/api/wishlist?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         cache.wishlistByCustomer[key] = {
@@ -98,7 +123,10 @@
       productId: normalizeId(config.productId),
       variantId: normalizeId(config.variantId),
       apiBaseUrl: normalizeId(config.apiBaseUrl) || fallbackApiBaseUrl,
-      deviceId: getDeviceId(),
+      shopDomain: normalizeId(config.shop),
+      loginUrl:
+        normalizeId(config.loginUrl) ||
+        "https://shopify.com/77283033320/account?locale=en&region_country=US",
     };
 
     const setLoading = (value) => {
@@ -121,6 +149,7 @@
         const items = await getWishlistForCustomer(
           state.customerId,
           state.apiBaseUrl,
+          state.shopDomain,
         );
         const found = (items || []).find(
           (item) =>
@@ -138,21 +167,6 @@
       }
     };
 
-    const loadFromGuest = () => {
-      if (!state.variantId) return;
-      const guestWishlist = JSON.parse(
-        localStorage.getItem("guestWishlist") || "[]",
-      );
-      const found = guestWishlist.find(
-        (item) =>
-          normalizeId(item.productId) === state.productId &&
-          normalizeId(item.variantId) === state.variantId,
-      );
-      if (found) {
-        setActive(true);
-      }
-    };
-
     const addLoggedIn = async () => {
       if (!state.variantId) return;
       const response = await fetch(`${state.apiBaseUrl}/api/wishlist/add`, {
@@ -163,7 +177,7 @@
           email: state.customerEmail,
           productId: state.productId,
           variantId: state.variantId || null,
-          deviceId: state.deviceId || undefined,
+          shopDomain: state.shopDomain || undefined,
         }),
       });
       const result = await response.json();
@@ -196,106 +210,9 @@
       }
     };
 
-    const addGuest = async () => {
-      if (!state.variantId) return;
-      const response = await fetch(`${state.apiBaseUrl}/api/wishlist/add`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: state.productId,
-          variantId: state.variantId || null,
-          deviceId: state.deviceId || undefined,
-        }),
-      });
-      const result = await response.json();
-      if (!result.success) return;
-      const guestWishlist = JSON.parse(
-        localStorage.getItem("guestWishlist") || "[]",
-      );
-      guestWishlist.push({
-        id: result.wishlistItemId || null,
-        productId: state.productId,
-        variantId: state.variantId || null,
-      });
-      localStorage.setItem("guestWishlist", JSON.stringify(guestWishlist));
-      setActive(true);
-    };
-
-    const removeGuest = async () => {
-      if (!state.variantId) return;
-      const guestWishlist = JSON.parse(
-        localStorage.getItem("guestWishlist") || "[]",
-      );
-      const index = guestWishlist.findIndex(
-        (item) =>
-          normalizeId(item.productId) === state.productId &&
-          normalizeId(item.variantId) === state.variantId,
-      );
-      if (index === -1) return;
-      const item = guestWishlist[index];
-      if (item?.id) {
-        await fetch(`${state.apiBaseUrl}/api/wishlist/remove`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wishlistItemId: item.id }),
-        });
-      }
-      guestWishlist.splice(index, 1);
-      localStorage.setItem("guestWishlist", JSON.stringify(guestWishlist));
-      setActive(false);
-    };
-
-    const toggleGuest = async () => {
-      if (!state.variantId) return;
-      if (!state.wishlisted) {
-        await addGuest();
-      } else {
-        await removeGuest();
-      }
-    };
-
     const hydrate = () => {
       if (state.customerId) {
-        const mergeGuest = async () => {
-          const mergeKey = `${state.customerId}:${state.deviceId || ""}`;
-          const merged =
-            window.PremierWishlistGuestMerged ||
-            (window.PremierWishlistGuestMerged = {});
-          if (merged[mergeKey]) return;
-          merged[mergeKey] = true;
-          const guestItems = JSON.parse(
-            localStorage.getItem("guestWishlist") || "[]",
-          );
-          if (!guestItems.length && !state.deviceId) {
-            return;
-          }
-          try {
-            const response = await fetch(
-              `${state.apiBaseUrl}/api/wishlist/merge`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  customerId: state.customerId,
-                  guestItems,
-                  deviceId: state.deviceId || undefined,
-                }),
-              },
-            );
-            const result = await response.json();
-            if (result?.wishlist) {
-              localStorage.removeItem("guestWishlist");
-              cache.wishlistByCustomer[state.customerId] = {
-                data: result.wishlist || [],
-              };
-            }
-          } catch {
-            // no-op
-          }
-        };
-        mergeGuest().finally(() => loadFromApi());
-      } else {
-        loadFromGuest();
+        loadFromApi();
       }
     };
 
@@ -316,7 +233,7 @@
           setLoading(false);
         }
       } else {
-        await toggleGuest();
+        showLoginModal(state.loginUrl);
       }
     });
 
@@ -338,7 +255,9 @@
       customerId: normalizeId(config.customerId),
       shop: normalizeId(config.shop),
       apiBaseUrl: normalizeId(config.apiBaseUrl) || fallbackApiBaseUrl,
-      deviceId: getDeviceId(),
+      loginUrl:
+        normalizeId(config.loginUrl) ||
+        "https://shopify.com/77283033320/account?locale=en&region_country=US",
     };
 
     const listEl = container.querySelector("[data-wishlist-list]");
@@ -372,26 +291,15 @@
       const notice = document.createElement("div");
       notice.className = "wishlist-page__notice";
       notice.innerHTML =
-        '<div class="wishlist-page__notice-text">Don\'t lose your list! Login to save your favorites and access them whenever.</div>' +
-        '<a class="wishlist-page__notice-link" href="/login">Login</a>';
+        '<div class="wishlist-page__notice-text">Please login first to access your wishlist.</div>' +
+        '<a class="wishlist-page__notice-link" href="' +
+        state.loginUrl +
+        '">Login</a>';
       if (titleEl && titleEl.parentNode) {
         titleEl.parentNode.insertBefore(notice, titleEl);
       } else {
         container.insertBefore(notice, container.firstChild);
       }
-    };
-
-    const getGuestItems = () => {
-      const guestWishlist = JSON.parse(
-        localStorage.getItem("guestWishlist") || "[]",
-      );
-      return guestWishlist.map((item) => ({
-        id:
-          normalizeId(item.id) ||
-          `${normalizeId(item.productId)}:${normalizeId(item.variantId)}`,
-        productId: normalizeId(item.productId),
-        variantId: normalizeId(item.variantId),
-      }));
     };
 
     const renderItems = (items) => {
@@ -417,34 +325,6 @@
         const removeButton = row.querySelector("[data-wishlist-remove]");
         removeButton?.addEventListener("click", async () => {
           setError("");
-          if (!state.customerId) {
-            const guestWishlist = JSON.parse(
-              localStorage.getItem("guestWishlist") || "[]",
-            );
-            const entry = guestWishlist.find(
-              (entryItem) =>
-                normalizeId(entryItem.productId) ===
-                  normalizeId(item.productId) &&
-                normalizeId(entryItem.variantId) ===
-                  normalizeId(item.variantId),
-            );
-            if (entry?.id) {
-              await fetch(`${state.apiBaseUrl}/api/wishlist/remove`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ wishlistItemId: entry.id }),
-              });
-            }
-            const next = guestWishlist.filter(
-              (entry) =>
-                normalizeId(entry.productId) !== normalizeId(item.productId) ||
-                normalizeId(entry.variantId) !== normalizeId(item.variantId),
-            );
-            localStorage.setItem("guestWishlist", JSON.stringify(next));
-            loadWishlist();
-            return;
-          }
-
           try {
             const response = await fetch(
               `${state.apiBaseUrl}/api/wishlist/remove`,
@@ -611,45 +491,11 @@
       };
       if (state.customerId) {
         toggleGuestNotice(false);
-        const mergeKey = `${state.customerId}:${state.deviceId || ""}`;
-        const merged =
-          window.PremierWishlistGuestMerged ||
-          (window.PremierWishlistGuestMerged = {});
-        if (!merged[mergeKey]) {
-          merged[mergeKey] = true;
-          const guestItems = JSON.parse(
-            localStorage.getItem("guestWishlist") || "[]",
-          );
-          if (guestItems.length || state.deviceId) {
-            try {
-              const response = await fetch(
-                `${state.apiBaseUrl}/api/wishlist/merge`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    customerId: state.customerId,
-                    guestItems,
-                    deviceId: state.deviceId || undefined,
-                  }),
-                },
-              );
-              const result = await response.json();
-              if (result?.wishlist) {
-                localStorage.removeItem("guestWishlist");
-                cache.wishlistByCustomer[state.customerId] = {
-                  data: result.wishlist || [],
-                };
-              }
-            } catch {
-              // no-op
-            }
-          }
-        }
         try {
           const items = await getWishlistForCustomer(
             state.customerId,
             state.apiBaseUrl,
+            state.shop,
           );
           renderItems(items || []);
           await hydrateProductCards(items || []);
@@ -666,12 +512,7 @@
       }
 
       toggleGuestNotice(true);
-      const items = getGuestItems();
-      renderItems(items);
-      await hydrateProductCards(items);
-      if (items && items.length) {
-        logDebugProduct(items[0].productId);
-      }
+      renderItems([]);
       setLoading(false);
     };
 

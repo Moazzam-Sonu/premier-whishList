@@ -5,10 +5,7 @@ import type {
   WishlistItem,
 } from "../types/wishlist";
 import { corsResponse, handleCorsPreflight } from "../utils/cors.server";
-import {
-  getOrCreateCustomerForShopifyId,
-  getOrCreateDefaultShop,
-} from "../utils/wishlist.server";
+import { getOrCreateCustomerForShopifyId } from "../utils/wishlist.server";
 
 // Handle OPTIONS preflight requests
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -25,7 +22,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       productId,
       variantId,
       email,
-      deviceId,
+      shopDomain,
     } = body;
     if (!productId) {
       return corsResponse(
@@ -47,10 +44,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       );
     }
 
-    const normalizedDeviceId = deviceId?.trim() || null;
-    if (!shopifyCustomerId && !normalizedDeviceId) {
+    if (!shopifyCustomerId) {
       return corsResponse(
-        { success: false, error: "Missing deviceId for guest wishlist" },
+        { success: false, error: "Missing customerId" },
         request,
         { status: 400 },
       );
@@ -59,8 +55,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     let wishlist;
     if (shopifyCustomerId) {
       // Map Shopify customer ID to our internal Customer + Shop
-      const { shop, customer } =
-        await getOrCreateCustomerForShopifyId(shopifyCustomerId, email);
+      const { shop, customer } = await getOrCreateCustomerForShopifyId(
+        shopifyCustomerId,
+        email,
+        shopDomain,
+      );
 
       // Find customer's default wishlist or create it
       wishlist = await prisma.wishlist.findFirst({
@@ -79,30 +78,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             isDefault: true,
             shopId: shop.id,
             shareToken: crypto.randomUUID(),
-          },
-          include: { items: true },
-        });
-      }
-    } else {
-      // Guest wishlist: associate with default shop but no customer
-      const shop = await getOrCreateDefaultShop();
-      wishlist = await prisma.wishlist.findFirst({
-        where: {
-          shopId: shop.id,
-          customerId: null,
-          deviceId: normalizedDeviceId,
-          isDefault: true,
-        },
-        include: { items: true },
-      });
-      if (!wishlist) {
-        wishlist = await prisma.wishlist.create({
-          data: {
-            name: "Guest Wishlist",
-            isDefault: true,
-            shopId: shop.id,
-            shareToken: crypto.randomUUID(),
-            deviceId: normalizedDeviceId,
           },
           include: { items: true },
         });

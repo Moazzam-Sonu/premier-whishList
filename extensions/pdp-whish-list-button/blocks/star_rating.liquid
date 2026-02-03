@@ -45,7 +45,7 @@
 
 <div class="heart-btn-wrapper">
   {% capture wishlist_config %}
-    {"customerId": {{ customer.id | json }}, "customerEmail": {{ customer.email | strip | json }}, "productId": {{ product.id | json }}, "variantId": {{ product.selected_or_first_available_variant.id | json }}}
+    {"customerId": {{ customer.id | json }}, "customerEmail": {{ customer.email | strip | json }}, "productId": {{ product.id | json }}, "variantId": {{ product.selected_or_first_available_variant.id | json }}, "loginUrl": "https://shopify.com/77283033320/account?locale=en&region_country=US", "shop": {{ shop.permanent_domain | json }}}
   {% endcapture %}
   <button type="button"
      class="heart-btn"
